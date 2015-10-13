@@ -1,0 +1,27 @@
+useDynLib("QuasR", .registration=TRUE)
+
+import(methods)
+import(zlibbioc)
+
+import(BiocGenerics)
+importFrom(GenomeInfoDb, seqlengths)
+importFrom(BiocInstaller, biocLite)
+importFrom(GenomicFiles, reduceByYield, REDUCEsampler)
+import(S4Vectors)
+import(IRanges)
+importFrom(Biobase, createPackage, testBioCConnection)
+import(Biostrings)
+import(GenomicRanges)
+import(BSgenome)
+import(Rsamtools)
+import(ShortRead)
+import(GenomicFeatures)
+importFrom(GenomicAlignments, readGAlignments)
+import(Rbowtie)
+importFrom(rtracklayer, wigToBigWig)
+
+exportClasses(qProject)
+
+exportMethods(length, genome, auxiliaries, alignments, "[", show)
+
+export(qAlign, qCount, preprocessReads, qExportWig, qQCReport, qMeth, alignmentStats, qProfile)

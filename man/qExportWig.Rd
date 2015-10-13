@@ -1,0 +1,153 @@
+\name{qExportWig}
+\alias{qExportWig}
+
+\title{QuasR wig file export}
+
+\description{
+Create a fixed-step wig file from the alignments in the genomic bam
+files of the \sQuote{QuasR} project.
+}
+
+\usage{
+qExportWig(proj, file=NULL, collapseBySample=TRUE, binsize=100L,
+           shift=0L, strand=c("*","+","-"), scaling=TRUE,
+           tracknames=NULL, log2p1=FALSE,
+           colors=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A",
+                    "#66A61E", "#E6AB02", "#A6761D", "#666666"),
+           includeSecondary=TRUE,
+           mapqMin=0L, mapqMax=255L, absIsizeMin=NULL, absIsizeMax=NULL,
+           createBigWig=FALSE)
+}
+
+\arguments{
+  \item{proj}{A \code{qProject} object as returned by \code{qAlign}.}
+  \item{file}{A character vector with the name(s) for the wig or bigWig
+    file(s) to be generated. Either \code{NULL} or a vector of the same
+    length as the number of bam files (for
+    \code{collapseBySample=FALSE}) or the number of unique sample names
+    (for \code{collapseBySample=TRUE}) in \code{proj}. If \code{NULL}, the
+    wig or bigWig file names are generated from the names of the genomic
+    bam files or unique sample names with an added \dQuote{.wig.gz} or
+    \dQuote{.bw} extension.}
+  \item{collapseBySample}{If \code{TRUE}, genomic bam files with identical
+    sample name will be combined (summed) into a single track.}
+  \item{binsize}{a numerical value defining the bin and step size for
+    the wig or bigWig file(s). \code{binsize} will be coerced to
+    \code{integer()}.}
+  \item{shift}{Either a vector or a scalar value defining the read shift (e.g.
+    half of fragment length, see \sQuote{Details}). If \code{length(shift)>1},
+    the length must match the number of bam files in \sQuote{proj}, and
+    the i-th sample will be converted to wig or bigWig using the value in
+    \code{shift[i]}. \code{shift} will be coerced to \code{integer()}. For
+    paired-end alignments, \code{shift} will be ignored, and a warning
+    will be issued if it is set to a non-zero value (see \sQuote{Details}).}
+  \item{strand}{Only count alignments of \code{strand}. The default (\dQuote{*})
+    will count all alignments.}
+  \item{scaling}{If TRUE or a numerical value, the output values in the
+    wig or bigWig file(s) will be linearly scaled by the total number of
+    aligned reads per sample to improve comparability (see
+    \sQuote{Details}).}
+  \item{tracknames}{A character vector with the names of the
+    tracks to appear in the track header. If \code{NULL}, the sample
+    names in \code{proj} will be used.}
+  \item{log2p1}{If \code{TRUE}, the number of alignments \code{x} per bin will
+    be transformed using the formula \code{log2(x+1)}.}
+  \item{colors}{A character vector with R color names to be used for the tracks.}
+  \item{includeSecondary}{if \code{TRUE} (the default), include alignments
+    with the secondary bit (0x0100) set in the \code{FLAG}.}
+  \item{mapqMin}{minimal mapping quality of alignments to be included
+    (mapping quality must be greater than or equal to
+    \code{mapqMin}). Valid values are between 0 and 255. The default (0)
+    will include all alignments.}
+  \item{mapqMax}{maximal mapping quality of alignments to be included
+    (mapping quality must be less than or equal to
+    \code{mapqMax}). Valid values are between 0 and 255. The default
+    (255) will include all alignments.}
+  \item{absIsizeMin}{For paired-end experiments, minimal absolute insert
+    size (TLEN field in SAM Spec v1.4) of alignments to be
+    included. Valid values are greater than 0 or \code{NULL} (default),
+    which will not apply any minimum insert size filtering.}
+  \item{absIsizeMax}{For paired-end experiments, maximal absolute insert
+    size (TLEN field in SAM Spec v1.4) of alignments to be
+    included. Valid values are greater than 0 or \code{NULL} (default),
+    which will not apply any maximum insert size filtering.}
+  \item{createBigWig}{If \code{TRUE}, first a temporary wig file will be
+    created and then converted to BigWig format (file extension
+    \dQuote{.bw}) using the \code{\link[rtracklayer]{wigToBigWig}}
+    function from package \pkg{rtracklayer}.}
+}
+
+\details{
+  \code{qExportWig()} uses the genome bam files in \code{proj} as input
+  to create wig or bigWig files with the number of alignments (pairs)
+  per window of \code{binsize} nucleotides. By default
+  (\code{collapseBySample=TRUE}), one file per unique sample will be
+  created. If \code{collapseBySample=FALSE}, one file per genomic bam
+  file will be created. See \url{http://genome.ucsc.edu/goldenPath/help/wiggle.html} for the
+  definition of the wig format, and
+  \url{http://genome.ucsc.edu/goldenPath/help/bigWig.html} for the
+  definition of the bigWig format.
+  
+  The genome is tiled with sequential windows of length \code{binsize},
+  and alignments in the bam file are assigned to these windows: Single
+  read alignments are assigned according to their 5'-end coordinate
+  shifted by \code{shift} towards the 3'-end (assuming that the 5'-end
+  is the leftmost coordinate for plus-strand alignments, and the rightmost
+  coordinate for minus-strand alignments). Paired-end alignments are
+  assigned according to the base in the middle between the leftmost and
+  rightmost coordinates of the aligned pair of reads. Each pair of reads
+  is only counted once, and not properly paired alignments are
+  ignored. Secondary alignments can be excluded by setting
+  \code{includeSecondary=FALSE}. In paired-end experiments,
+  \code{absIsizeMin} and \code{absIsizeMax} can be used to select
+  alignments based on their insert size (TLEN field in SAM Spec v1.4).
+
+  For \code{scaling=TRUE}, the number of alignments per bin \eqn{n}
+  for the sample \eqn{i} are linearly scaled to the mean total
+  number of alignments over all samples in \code{proj} according to:
+  \eqn{n_s = n /N[i] *mean(N)} where \eqn{n_s} is the scaled number
+  of alignments in the bin and \eqn{N} is a vector with the total
+  number of alignments for each sample. Alternatively, if scaling is set
+  to a positive numerical value \eqn{s}, this value is used instead of
+  \eqn{\textnormal{mean}(N)}{mean(N)}, and values are scaled according
+  to: \eqn{n_s = n /N[i] *s}.
+
+  \code{mapqMin} and \code{mapqMax} allow to select alignments
+  based on their mapping qualities. \code{mapqMin} and \code{mapqMax} can
+  take integer values between 0 and 255 and equal to
+  \eqn{-10 log_{10} Pr(\textnormal{mapping position is wrong})}{-10
+  log10 Pr(mapping position is wrong)}, rounded to the nearest
+  integer. A value 255 indicates that the mapping quality is not available.
+
+  If \code{createBigWig=FALSE} and \code{file} ends with \sQuote{.gz},
+  the resulting wig file will be compressed using gzip and is suitable
+  for uploading as a custom track to your favorite genome browser
+  (e.g. UCSC or Ensembl).
+}
+
+\value{
+  (invisible) The file name of the generated wig or bigWig file(s).
+}
+\author{
+Anita Lerch, Dimos Gaidatzis and Michael Stadler
+}
+
+\seealso{
+  \code{\linkS4class{qProject}}, \code{\link{qAlign}},
+  \code{\link[rtracklayer]{wigToBigWig}}
+}
+
+\examples{
+# copy example data to current working directory
+file.copy(system.file(package="QuasR", "extdata"), ".", recursive=TRUE)
+
+# create alignments
+sampleFile <- "extdata/samples_chip_single.txt"
+genomeFile <- "extdata/hg19sub.fa"
+proj <- qAlign(sampleFile, genomeFile)
+
+# export wiggle file
+qExportWig(proj, binsize=100L, shift=0L, scaling=TRUE)
+}
+
+\keyword{utilites}
